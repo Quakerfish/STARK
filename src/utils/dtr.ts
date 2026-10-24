@@ -16,6 +16,9 @@ export const formatTime = (d: Date | null) => {
   return `${h % 12 || 12}:${m} ${h >= 12 ? 'PM' : 'AM'}`;
 };
 
+export const isSameDay = (a: Date, b: Date) =>
+  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
 // Minutes worked for one row. Handles overnight shifts (out earlier than in).
 export function rowMinutes(row: DtrRow): number | null {
   if (!row.timeIn || !row.timeOut) return null;

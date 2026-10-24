@@ -2,18 +2,23 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { DtrRow, formatDate, formatTime, rowMinutes, toDuration, toHours } from '../utils/dtr';
+import Taskbar from '../components/taskbar/taskbar';
+import { DtrRow, formatDate, formatTime, isSameDay, rowMinutes, toDuration } from '../utils/dtr';
 
 type Field = 'date' | 'timeIn' | 'timeOut';
 
+const newRow = (): DtrRow => ({
+  id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
+  date: new Date(),
+  timeIn: null,
+  timeOut: null,
+});
+
 export default function DayTimeCalculator() {
-  const [rows, setRows] = useState<DtrRow[]>([
-    { id: String(Date.now()), date: new Date(), timeIn: null, timeOut: null },
-  ]);
+  const [rows, setRows] = useState<DtrRow[]>([newRow()]);
   const [picker, setPicker] = useState<{ id: string; field: Field } | null>(null);
 
-  const addRow = () =>
-    setRows((r) => [...r, { id: String(Date.now()), date: new Date(), timeIn: null, timeOut: null }]);
+  const addRow = () => setRows((r) => [...r, newRow()]);
 
   const removeRow = (id: string) => setRows((r) => r.filter((x) => x.id !== id));
 
@@ -22,18 +27,41 @@ export default function DayTimeCalculator() {
 
   const totalMinutes = rows.reduce((sum, r) => sum + (rowMinutes(r) ?? 0), 0);
 
+  // A row that has a time in but no time out yet = currently clocked in.
+  const openRow = rows.find((r) => r.timeIn && !r.timeOut);
+
+  // Fingerprint: first press = time in, next press = time out.
+  const handleFingerprint = () => {
+    const now = new Date();
+    if (openRow) {
+      updateRow(openRow.id, 'timeOut', now);
+      return;
+    }
+    const emptyToday = rows.find((r) => !r.timeIn && !r.timeOut && isSameDay(r.date, now));
+    if (emptyToday) {
+      setRows((r) => r.map((x) => (x.id === emptyToday.id ? { ...x, date: now, timeIn: now } : x)));
+    } else {
+      setRows((r) => [...r, { ...newRow(), date: now, timeIn: now }]);
+    }
+  };
+
   const activeRow = picker ? rows.find((r) => r.id === picker.id) : null;
   const pickerValue = activeRow && picker ? activeRow[picker.field] ?? new Date() : new Date();
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
+        {/* Status */}
+        <Text style={[styles.status, openRow && styles.statusActive]}>
+          {openRow ? `Clocked in at ${formatTime(openRow.timeIn)}` : 'Not clocked in'}
+        </Text>
+
         {/* Header */}
         <View style={[styles.row, styles.headerRow]}>
-          <Text style={[styles.headerText, styles.colDate]}>Date</Text>
-          <Text style={[styles.headerText, styles.colTime]}>In</Text>
-          <Text style={[styles.headerText, styles.colTime]}>Out</Text>
-          <Text style={[styles.headerText, styles.colHours]}>No. of Hours</Text>
+          <Text style={[styles.headerText, styles.col]}>Date</Text>
+          <Text style={[styles.headerText, styles.col]}>In</Text>
+          <Text style={[styles.headerText, styles.col]}>Out</Text>
+          <Text style={[styles.headerText, styles.col]}>Hours</Text>
           <View style={styles.colDelete} />
         </View>
 
@@ -42,16 +70,18 @@ export default function DayTimeCalculator() {
           const min = rowMinutes(row);
           return (
             <View key={row.id} style={styles.row}>
-              <TouchableOpacity style={styles.colDate} onPress={() => setPicker({ id: row.id, field: 'date' })}>
+              <TouchableOpacity style={styles.col} onPress={() => setPicker({ id: row.id, field: 'date' })}>
                 <Text style={styles.cell}>{formatDate(row.date)}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.colTime} onPress={() => setPicker({ id: row.id, field: 'timeIn' })}>
+              <TouchableOpacity style={styles.col} onPress={() => setPicker({ id: row.id, field: 'timeIn' })}>
                 <Text style={styles.cell}>{formatTime(row.timeIn)}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.colTime} onPress={() => setPicker({ id: row.id, field: 'timeOut' })}>
+              <TouchableOpacity style={styles.col} onPress={() => setPicker({ id: row.id, field: 'timeOut' })}>
                 <Text style={styles.cell}>{formatTime(row.timeOut)}</Text>
               </TouchableOpacity>
-              <Text style={[styles.cell, styles.colHours]}>{min === null ? '-' : toHours(min)}</Text>
+              <View style={styles.col}>
+                <Text style={styles.cell}>{min === null ? '-' : toDuration(min)}</Text>
+              </View>
               <TouchableOpacity style={styles.colDelete} onPress={() => removeRow(row.id)}>
                 <Ionicons name="close-circle-outline" size={20} color="#888" />
               </TouchableOpacity>
@@ -62,10 +92,7 @@ export default function DayTimeCalculator() {
         {/* Total */}
         <View style={[styles.row, styles.totalRow]}>
           <Text style={styles.totalLabel}>Total:</Text>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.totalValue}>{toHours(totalMinutes)} hrs</Text>
-            <Text style={styles.totalSub}>{toDuration(totalMinutes)}</Text>
-          </View>
+          <Text style={styles.totalValue}>{toDuration(totalMinutes)}</Text>
         </View>
 
         <TouchableOpacity style={styles.addBtn} onPress={addRow}>
@@ -85,12 +112,16 @@ export default function DayTimeCalculator() {
           }}
         />
       )}
+
+      <Taskbar onFingerprintPress={handleFingerprint} fingerprintActive={!!openRow} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#121212' },
+  status: { color: '#aaa', fontSize: 13, marginBottom: 12, textAlign: 'center' },
+  statusActive: { color: '#2ecc71', fontWeight: '600' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -101,12 +132,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   headerRow: { backgroundColor: '#2c2c2c', borderTopLeftRadius: 10, borderTopRightRadius: 10 },
-  headerText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  cell: { color: '#fff', fontSize: 14 },
-  colDate: { flex: 1.1 },
-  colTime: { flex: 1.3 },
-  colHours: { flex: 1, textAlign: 'right' },
-  colDelete: { width: 32, alignItems: 'flex-end' },
+  headerText: { color: '#fff', fontWeight: '700', fontSize: 12, textAlign: 'center' },
+  cell: { color: '#fff', fontSize: 14, textAlign: 'center' },
+  // All data columns share the same width so the table stays even.
+  col: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  colDelete: { width: 32, alignItems: 'flex-end', justifyContent: 'center' },
   totalRow: {
     justifyContent: 'space-between',
     backgroundColor: '#2c2c2c',
@@ -117,7 +147,6 @@ const styles = StyleSheet.create({
   },
   totalLabel: { color: '#fff', fontSize: 18, fontWeight: '700' },
   totalValue: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  totalSub: { color: '#aaa', fontSize: 12, marginTop: 2 },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
