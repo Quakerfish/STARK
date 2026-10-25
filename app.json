@@ -17,7 +17,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.reze.STARK"
     },
     "web": {
       "output": "server",
@@ -33,11 +34,28 @@
           "imageWidth": 76
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "react-native-document-scanner-plugin",
+      [
+        "react-native-document-scanner-plugin",
+        {
+          "cameraPermission": "Camera access is needed to scan your DTR"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "daddb739-1b21-4726-a108-55303425456e"
+      }
     }
   }
 }
