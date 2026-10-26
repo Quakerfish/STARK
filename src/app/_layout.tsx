@@ -2,7 +2,9 @@ import { Stack } from 'expo-router';
 
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    //Code to turning off transition animation to all pages. animation: 'none'
+    <Stack screenOptions={{ headerShown: false, animation: 'none'}}>
+      
       <Stack.Screen name="index" />
       <Stack.Screen
         name="day-time-calculator"
