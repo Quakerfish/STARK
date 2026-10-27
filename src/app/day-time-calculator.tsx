@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -39,6 +39,7 @@ const sumMinutes = (rows: DtrRow[]) => rows.reduce((sum, r) => sum + (rowMinutes
 
 export default function DayTimeCalculator() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [rows, setRows] = useState<DtrRow[]>([newRow()]);
   const [picker, setPicker] = useState<{ id: string; field: Field } | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -140,7 +141,7 @@ export default function DayTimeCalculator() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false, animation: 'none' }} />
       <GradientBackground />
 
       <ScrollView
@@ -149,6 +150,14 @@ export default function DayTimeCalculator() {
       >
         {/* Title pill */}
         <View style={styles.titlePill}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            hitSlop={8}
+            accessibilityLabel="Back to home"
+          >
+            <Ionicons name="chevron-back" size={24} color="#fff" />
+          </TouchableOpacity>
           <Text style={styles.titleText}>STARK</Text>
         </View>
 
@@ -319,6 +328,15 @@ const styles = StyleSheet.create({
     backgroundColor: GLASS,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backBtn: {
+    position: 'absolute',
+    left: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
